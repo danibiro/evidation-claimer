@@ -1,0 +1,5 @@
+# clutter, unnecessary logs only
+log.txt
+
+# config file needs to stay hidden
+user_config.yaml
