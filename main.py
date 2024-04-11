@@ -1,3 +1,4 @@
+import sys
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
@@ -7,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 import yaml
 import logging as log
+from time import sleep
 
 log.basicConfig(
     filename="log.txt",
@@ -42,6 +44,7 @@ def init(driver):
     
 def accept_cookies(wait):
     try:
+        sleep(1)
         cookie_accept_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="onetrust-accept-btn-handler"]')))
         cookie_accept_button.click()
         log.info("Cookies accepted")
@@ -61,6 +64,57 @@ def login(wait, user_config):
     login_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="root"]/div/div[2]/div/form/button')))
     login_button.click()
 
+def check_if_cards_exist(wait) -> int:
+    try:
+        # TODO: This xpath is not correct (yet), nr_children is always 3
+        cards = wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="root"]/div/div[2]/div[1]/div/div[1]')))
+        nr_children = len(cards.find_elements(By.XPATH, "./*"))
+        return nr_children
+    except NoSuchElementException:
+        log.info("No cards left")
+        return 0
+
+# TODO: Mood check and sleep check don't work as intended yet, need to investigate a bit more; one succeeds, the other fails
+
+def mood_check(driver, wait) -> bool:
+    try:
+        mood_button = wait.until(EC.element_to_be_clickable((By.XPATH, '(//*[@id="field-react-aria-1"])')))
+        mood_button.click()
+        
+        submit_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="root"]/div/div[2]/div[1]/div/div[1]/div[1]/div/div[2]/div[4]/div[2]/div[2]')))
+        submit_button.click()
+        print("????????")
+        driver.refresh()
+        return True
+    except:
+        log.error("Could not check the mood")
+        return False
+        
+def sleep_check(driver, wait) -> bool:
+    try:    
+        sleep_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="field-react-aria-4"]')))
+        sleep_button.click()
+
+        submit_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="root"]/div/div[2]/div[1]/div/div[1]/div[2]/div/div[2]/div[4]/div[2]/div[2]')))
+        submit_button.click()
+        driver.refresh()
+        return True
+    except:
+        log.error("Could not check sleep")
+        return False
+
+def learn_more(driver, wait, cards_left):
+    while (cards_left != 0):
+        learn_more_button = wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="root"]/div/div[2]/div[1]/div/div[1]/div[1]/div/div[2]/div[4]/div[2]')))
+        learn_more_button.click()
+        sleep(2)
+        window_handles = driver.window_handles
+        driver.switch_to.window(window_handles[-1])
+        driver.close()
+        driver.switch_to.window(window_handles[0])
+        driver.refresh()
+        cards_left = cards_left - 1
+
 if __name__ == "__main__":
     driver = driver_init()
     wait = WebDriverWait(driver, MAX_TIMEOUT)
@@ -68,3 +122,8 @@ if __name__ == "__main__":
     init(driver)
     accept_cookies(wait)
     login(wait, user_config)
+    cards_left = check_if_cards_exist(wait)
+    if (cards_left != 0):
+        cards_left = cards_left - 1 if mood_check(driver, wait) == True else cards_left
+        cards_left = cards_left - 1 if sleep_check(driver, wait) == True else cards_left
+        learn_more(driver, wait, cards_left)
