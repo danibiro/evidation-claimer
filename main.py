@@ -1,4 +1,3 @@
-import sys
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
@@ -65,25 +64,28 @@ def login(wait, user_config):
     login_button.click()
 
 def check_if_cards_exist(wait) -> int:
+    # this is needed to load the elements correctly. a default list is shown with 3 elems before load, after load it refreshes
     try:
-        # TODO: This xpath is not correct (yet), nr_children is always 3
-        cards = wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="root"]/div/div[2]/div[1]/div/div[1]')))
-        nr_children = len(cards.find_elements(By.XPATH, "./*"))
-        return nr_children
+        cards2 = wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="root"]/div/div[2]/div[1]/div/div[2]/ol')))
+        sleep(1)
+        nr_children2 = len(cards2.find_elements(By.XPATH, "./*"))
+        return nr_children2
     except NoSuchElementException:
         log.info("No cards left")
         return 0
 
-# TODO: Mood check and sleep check don't work as intended yet, need to investigate a bit more; one succeeds, the other fails
-
 def mood_check(driver, wait) -> bool:
     try:
-        mood_button = wait.until(EC.element_to_be_clickable((By.XPATH, '(//*[@id="field-react-aria-1"])')))
+        for elem in range(1, 4):
+            try:
+                mood_button = wait.until(EC.element_to_be_clickable((By.XPATH, f'(//*[@id="field-react-aria-{elem}"])')))
+                continue
+            except:
+                pass
         mood_button.click()
         
         submit_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="root"]/div/div[2]/div[1]/div/div[1]/div[1]/div/div[2]/div[4]/div[2]/div[2]')))
         submit_button.click()
-        print("????????")
         driver.refresh()
         return True
     except:
@@ -91,8 +93,13 @@ def mood_check(driver, wait) -> bool:
         return False
         
 def sleep_check(driver, wait) -> bool:
-    try:    
-        sleep_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="field-react-aria-4"]')))
+    try:
+        for elem in range(1, 4):
+            try:
+                sleep_button = wait.until(EC.element_to_be_clickable((By.XPATH, f'(//*[@id="field-react-aria-{elem}"])')))
+                continue
+            except:
+                pass
         sleep_button.click()
 
         submit_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="root"]/div/div[2]/div[1]/div/div[1]/div[2]/div/div[2]/div[4]/div[2]/div[2]')))
@@ -107,6 +114,7 @@ def learn_more(driver, wait, cards_left):
     while (cards_left != 0):
         learn_more_button = wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="root"]/div/div[2]/div[1]/div/div[1]/div[1]/div/div[2]/div[4]/div[2]')))
         learn_more_button.click()
+        log.info("Clicked on Learn more")
         sleep(2)
         window_handles = driver.window_handles
         driver.switch_to.window(window_handles[-1])
